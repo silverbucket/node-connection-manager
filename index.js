@@ -16,62 +16,58 @@ var objectAssert = require('object-assert'),
     ArrayKeys    = require('array-keys');
 
 
-var ClientManagerWrapper = (function () {
-  var clients = {};
+var ConnectionManager = (function (namespace, scope) {
+
+  var clients = new ArrayKeys({
+    identifier: 'id'
+  });
 
   /**
-   * Class: ClientManager
+   * Class: ConnectionManager
    *
-   * The singleton object responsible for keeping a client session alive for
-   * retreival by the same platform later (maybe a client refresh?)
+   * The singleton object responsible for keeping a connection session alive for
+   * retreival for anything claiming the same namespace. Tracking references, etc.
    *
    */
-  function ClientManager(platform) {
-    ensureIndex(platform);
+  function _ConnectionManager() {}
+
+  function getScope(client) {
+    return {
+      id: client.id,
+      credentials: client.credentials,
+      connection: client.connection,
+      scope: scope
+    };
   }
 
-  function ensureIndex(platform) {
-    if (!clients[platform]) {
-      clients[platform] = new ArrayKeys({
-        identifier: 'key'
-      });
-    }
-  }
+  function registerListeners(client) {
 
-  function registerListeners(key, client, session) {
-    var platform  = session.platform,
-        sessionId = session.getSessionID();
-
-    function listenerWrapper(listener, sess, c) {
+    function listenerWrapper(listener) {
       return function () {
         var args = Array.prototype.slice.call(arguments);
-        listener.apply({session: sess, client: c}, args);
+        listener.apply(getScope(), args);
       };
     }
 
-    console.debug(' [client manager:create:' + platform + ':' + sessionId +
-                  '] registering listeners');
-
-    for (var name in client.listeners) {
+    var keys = Object.keys(client.listeners);
+    for (var i = 0, len = keys.length; i < len; i += 1) {
       // wrapper for listener callbacks
-      if (typeof client.indexedListeners[name] === 'undefined') {
-        client.indexedListeners[name] = {};
-      } else if (typeof client.indexedListeners[name][sessionId + name] !== 'undefined') {
-        // session already registered listeners
+      if (typeof client.indexedListeners[keys[i]] === 'undefined') {
+        client.indexedListeners[keys[i]] = {}; // TODO use ArrayKey
+      } else if (typeof client.indexedListeners[keys[i]][client.id + '__' + scope.id] !== 'undefined') {
+        // scope already registered listeners
         continue;
       } else {
-        // new session, register listeners for it
-        client.indexedListeners[name][sessionId + name] = listenerWrapper(client.listeners[name], session, client);
+        // new scope, register listeners for it
+        client.indexedListeners[keys[i]][client.id + '__' + scope.id] = listenerWrapper(client.listeners[keys[i]]);
 
         try {
-          client.addListener.apply({session: session}, [client, client.key, name, client.indexedListeners[name][sessionId + name]]);
+          client.addListener.apply(getScope(), [keys[i], client.indexedListeners[keys[i]][client.id + '__' + scope.id]]);
         } catch (e) {
-          console.error('ERROR: '+e);
-          //return e;
+          throw new Error(e);
         }
       }
     }
-    return client;
   }
 
   /**
@@ -81,8 +77,6 @@ var ClientManagerWrapper = (function () {
    *
    * Parameters:
    *
-   *   key - unique identifier of this client connection
-   *   creds - credential object retreived from getConfig()
    *   o   - object containing a set of function callbacks for various states
    *         of the client.
    *   cb  - callback function when create is completed, params are:
@@ -90,105 +84,130 @@ var ClientManagerWrapper = (function () {
    *
    *  ---
    *
-   *   o.connect(key, credentials, cb) -
-   *         called to establish a connection, should return the client
-   *         connection object.
+   *   o.id [string] - unique identifier of this client connection
    *
-   *   o.listeners(object) -
+   *   o.timeout [number] - optionally specify the timeout in ms to abort the
+   *                        connection attempt.
+   *
+   *   o.credentials [object]
+   *         credential object to be used when issuing the connect
+   *
+   *   o.connect(cb) [function]
+   *         called to establish a connection, should provide the the client
+   *         connection object on cb.
+   *
+   *   o.listeners [object]
    *         an object of listeners, the property is the name of the listener,
    *         the value is a function to call when that listener event is fired.
    *
-   *   o.addListener(client, key, name, func) -
+   *   o.addListener(name, func) [function]
    *         executed when the clientManager wants to add a listener (ie.
-   *         session connect), the name/func pairs will be whatever you've
+   *         during connect), the name/func pairs will be whatever you've
    *         described in the listeners(object).
    *
-   *   o.removeListener(client, key, name, func) -
+   *   o.removeListener(name, func) [function]
    *         called when the clientManager wants to remove a listener (ie.
-   *         session disconnect).
+   *         during a disconnect).
    *
-   *   o.disconnect(client, key, cb) -
+   *   o.disconnect(cb) [function]
    *         called when the clientManager wants to completely destroy the
    *         connection.
    *
    */
-  ClientManager.prototype.create = function (session, key, creds, o, cb) {
-    var platform  = session.platform,
-        sessionId = session.getSessionID();
+  _ConnectionManager.prototype.create = function (o, cb) {
 
-    console.debug(' [client manager:create:' + platform + ':' + sessionId +
-                  '] called');
+    console.log(' [client manager:create:' + namespace + '] called');
 
-    ensureIndex(platform);
-
-    if (typeof key !== 'string') {
-      console.error(' [client manager:create:' + platform + ':' + sessionId +
-                    '] key not defined.');
-      return false;
-    } else if (typeof creds !== 'object') {
-      console.error(' [client manager:create:' + platform + ':' + sessionId +
-                    '] credentials not defined.');
-      return false;
-    } else if (typeof o !== 'object') {
-      console.error(' [client manager:create:' + platform + ':' + sessionId +
-                    '] object not defined.');
-      return false;
+    if (typeof o !== 'object') {
+      return cb('first parameter object not defined.');
     } else if (typeof cb !== 'function') {
-      console.error(' [client manager:create:' + platform + ':' + sessionId +
-                    '] callback not defined.');
-      return false;
+      return cb('callback not defined.');
     }
 
-    if ((typeof o.connect !== 'function') ||
+    if ((typeof o.id !== 'string') ||
+        (typeof o.credentials !== 'object') ||
         (typeof o.listeners !== 'object') ||
         (typeof o.addListener !== 'function') ||
         (typeof o.removeListener !== 'function') ||
         (typeof o.disconnect !== 'function')) {
-      console.error(' [client manager:create:' + platform + ':' + sessionId +
-                    '] properties of object must be: connect(function ['+typeof o.connect+']) ' +
-                    'listeners(object ['+typeof o.listeners+']) addListener(function ['+typeof o.addListener+']) ' +
-                    'removeListener(function ['+typeof o.removeListener+']) disconnect(function ['+typeof o.disconnect+'])');
-      return false;
+      return cb('properties of object must be: connect(function [' + typeof o.connect + ']) ' +
+                'listeners(object [' + typeof o.listeners + ']) addListener(function [' + typeof o.addListener + ']) ' +
+                'removeListener(function [' + typeof o.removeListener + ']) disconnect(function [' + typeof o.disconnect + '])');
     }
 
     o.timeout = (typeof o.timeout === 'number') ? o.timeout : 6000;
 
     var client = {
-      id: key,
-      key: key,
-      credentials: creds,
+      id: o.id,
+      credentials: o.credentials,
+      connect: o.connect,
       listeners: o.listeners,
       indexedListeners: {},
       addListener: o.addListener,
       removeListener: o.removeListener,
       disconnect: o.disconnect,
-      conn: undefined
+      connection: undefined
     };
 
-    console.debug(' [client manager:create:' + platform + ':' + sessionId + '] calling client.connect()');
-
     // call provided connect function
-    o.connect.apply({session: session}, [key, creds, function (err, c) {
+    o.connect.apply(getScope(client), [function (err, c) {
       if (err) {
         // error with client connection
-        console.debug(' [client manager:create:' + platform + ':' + sessionId +
-                  '] error: ', err);
-        cb(err);
+        return cb(err);
       }
-      client.conn = c;
-      console.info(' [client manager:create:' + platform + ':' + sessionId +
-                    '] client creation complete.');
+      client.connection = c;
 
-      client = registerListeners(key, client, session);
+      registerListeners(client);
 
-      ClientManager.prototype.add(session, key, client);
-      try {
-        cb(null, client);
-      } catch (e) {
-        console.error(' [client manager:create:' + platform + ':' + sessionId +
-                      '] failed callback upon completion: ' + e);
-      }
+      _ConnectionManager.prototype.add(client);
+
+      cb(null, client);
     }]);
+  };
+
+  /**
+   * Function: get
+   *
+   * Given an ID and credential object, the get function will send back an existing
+   * client object if one was found under the given key name, and also if the
+   * credential objects match.
+   *
+   * Parameters:
+   *
+   *   id       - unique name to lookup client
+   *   credentials - credential object set by client for the session.
+   *
+   * Returns:
+   *
+   *   client object, undefined (no client found) or false (credentials don't match)
+   */
+  _ConnectionManager.prototype.get = function (id, credentials) {
+    var client = clients.getRecord(id);
+    if (! client) {
+      return undefined;
+    }
+
+    if (! credentials) {
+      credentials = {};
+    }
+
+    //
+    // compare clients credentials with current sessions
+    //
+    if (objectAssert(credentials, client.credentials)) {
+      //
+      // credential match for client, return client object
+      //
+      client.references.addRecord(session);
+      console.info('credentials match, returning existing client. count: ' +
+                   _ConnectionManager.prototype.referenceCount(id));
+
+      clients[platform].addRecord(record);
+      return registerListeners(key, client, session);
+    } else {
+      console.log('credentials do not match, rejecting');
+      return false;
+    }
   };
 
 
@@ -204,45 +223,40 @@ var ClientManagerWrapper = (function () {
    *   client - the client object that contains the connection
    *
    */
-  ClientManager.prototype.add = function (session, key, client) {
-    var platform  = session.platform,
-        sessionId = session.getSessionID();
-    console.debug(' [client manager:add:' + platform + ':' + sessionId + '] add ' + key);
+  // _ConnectionManager.prototype.add = function (id) {
+  //   var record = clients.getRecord(id);
+  //   var completeRecord;
 
-    ensureIndex(platform);
+  //   if (!record) {
+  //     // adding new record, verify it has some basic things
+  //     if (typeof client.disconnect !== 'function') {
+  //       throw new Error('client must provide an disconnect() function');
+  //     }
+  //     if (typeof client.credentials !== 'object') {
+  //       throw new Error('client must provide a credentials object in order to' +
+  //                       ' retreive the client object with another session, even if it\'s empty.');
+  //     }
 
-    var record = clients[platform].getRecord(key);
-    var completeRecord;
-    if (!record) {
-      // adding new record, verify it has some basic things
-      if (typeof client.disconnect !== 'function') {
-        throw new Error('client must provide an disconnect() function');
-      }
-      if (typeof client.credentials !== 'object') {
-        throw new Error('client must provide a credentials object in order to' +
-                        ' retreive the client object with another session, even if it\'s empty.');
-      }
+  //     // ensure key index
+  //     client.key = key;
 
-      // ensure key index
-      client.key = key;
+  //     // the client is actually a sub-object, so we make sure it also has key
+  //     // and references here.
+  //     completeRecord = {
+  //       key: key,
+  //       client: client,
+  //       references: new ArrayKeys({
+  //         identifier: 'sid'
+  //       }),
+  //       listeners: {}
+  //     };
+  //   } else {
+  //     completeRecord = record;
+  //   }
 
-      // the client is actually a sub-object, so we make sure it also has key
-      // and references here.
-      completeRecord = {
-        key: key,
-        client: client,
-        references: new ArrayKeys({
-          identifier: 'sid'
-        }),
-        listeners: {}
-      };
-    } else {
-      completeRecord = record;
-    }
-
-    completeRecord.references.addRecord(session);
-    clients[platform].addRecord(completeRecord);
-  };
+  //   completeRecord.references.addRecord(session);
+  //   clients[platform].addRecord(completeRecord);
+  // };
 
 
   /**
@@ -259,7 +273,7 @@ var ClientManagerWrapper = (function () {
    *   key - unique name to lookup client
    *
    */
-  ClientManager.prototype.remove = function (session, key) {
+  _ConnectionManager.prototype.remove = function (session, key) {
     var platform  = session.platform,
         sessionId = session.getSessionID();
 
@@ -273,12 +287,12 @@ var ClientManagerWrapper = (function () {
       return;
     }
 
-    console.debug(' [client manager:remove:' + platform + ':' + sessionId +
+    console.debug(' [client manager:remove:' + namespace +
                   '] removal of ' + key + '. decreased count: ' +
-                  ClientManager.prototype.referenceCount(platform, key));
+                  _ConnectionManager.prototype.referenceCount(platform, key));
                   // , clients[platform]);
 
-    if (ClientManager.prototype.referenceCount(platform, key) <= 0) {
+    if (_ConnectionManager.prototype.referenceCount(platform, key) <= 0) {
       //
       // if the removal of our session reference brings the count to 0, then we
       // initiate the timeout for actual removal check
@@ -287,10 +301,10 @@ var ClientManagerWrapper = (function () {
         // console.log('ATTEMPTING CHECK: ['+platform+']['+key+']: ', clients[platform]);
         if ((!clients[platform]) || (!clients[platform][key])) {
           console.warn(' [client manager:remove] skipping duplicate removals, should not arrive here');
-        } else if (ClientManager.prototype.referenceCount(platform, key) <= 0) {
+        } else if (_ConnectionManager.prototype.referenceCount(platform, key) <= 0) {
           // disconnect client
           try {
-            console.info(' [client manager:remove:' + platform + ':' + sessionId +
+            console.info(' [client manager:remove:' + namespace +
                          '] ending client ' + key);
             console.debug(' [client manager:remove] references: ', record.references.getIdentifiers());
             record.client.disconnect.apply({session: session}, record.client, key, function () {
@@ -310,7 +324,7 @@ var ClientManagerWrapper = (function () {
           }
         } else {
           // someone jumped on and grabbed this client
-          console.debug(' [client manager:remove:' + platform + ':' + sessionId +
+          console.debug(' [client manager:remove:' + namespace +
                         '] client \'' + key + '\' spoken for, aborting removal.');
         }
       }, 20000); // delay for 20s
@@ -318,80 +332,9 @@ var ClientManagerWrapper = (function () {
   };
 
 
-  /**
-   * Function: get
-   *
-   * given a key and credential object, the get function will send back an existing
-   * client object if one was found under the given key name, and also if the
-   * credential objects match.
-   *
-   * Parameters:
-   *
-   *   key       - unique name to lookup client
-   *   creds     - credential object set by client for the session, (can be
-   *               retreived within a platform with session.getConfig('credentials'))
-   *
-   * Returns:
-   *
-   *   client object or undefined
-   */
-  ClientManager.prototype.get = function (session, key, creds) {
-    var platform  = session.platform,
-        sessionId = session.getSessionID();
-
-    if ((!key) || (!creds)) {
-      console.error(' [client manager:get:' + platform + ':' + sessionId +
-                    '] get needs two parameters key and credentials');
-      return undefined;
-    }
-
-    console.debug(' [client manager:get:' + platform + ':' + sessionId +
-                  '] getting client object ' + key);
-
-
-    ensureIndex(platform);
-    var record = clients[platform].getRecord(key);
-    if (!record) {
-      return undefined;
-    }
-
-    if (!creds) {
-      creds = {};
-    }
-
-    var client = record.client;
-
-    // delete creds.sessionId;
-    // delete creds.rid;
-
-    //
-    // compare clients credentials with current sessions
-    //
-    if (objectAssert(creds, client.credentials)) {
-      //
-      // credential match for client, return client object
-      //
-      record.references.addRecord(session);
-      console.info(' [client manager:get:' + platform + ':' + sessionId +
-                   '] credentials match, returning existing client. count: ' +
-                   ClientManager.prototype.referenceCount(platform, key));
-
-      clients[platform].addRecord(record);
-      return registerListeners(key, client, session);
-    } else {
-      console.log('ClientManager.get CREDENTIALS DO NOT MATCH');
-      console.debug('client object credentials: ', client.credentials);
-      console.debug('passed in credentials: ', creds);
-    }
-
-    console.warn(' [client manager:get:' + platform + ':' + sessionId +
-                 '] credentials do not match, rejecting');
-    return undefined;
-  };
-
 
   /**
-   * Function: move
+   * Function: move TODO
    *
    * moves a client object from one key lookup to another, useful for cases
    * where the 'key' is a username that changes after the initial creation of
@@ -410,20 +353,20 @@ var ClientManagerWrapper = (function () {
    *
    *   boolean
    */
-  ClientManager.prototype.move = function (session, oldkey, oldcreds, newkey, newcreds) {
+  _ConnectionManager.prototype.move = function (session, oldkey, oldcreds, newkey, newcreds) {
     var platform  = session.platform,
         sessionId = session.getSessionID();
 
     if ((!oldkey) || (!newkey) || (!oldcreds)) {
-      console.error(' [client manager:move:' + platform + ':' + sessionId +
+      console.error(' [client manager:move:' + namespace +
                     '] move needs at least three parameters oldkey, credentials, and newkey');
       return undefined;
     }
 
-    console.debug(' [client manager:move:' + platform + ':' + sessionId +
+    console.debug(' [client manager:move:' + namespace +
                     '] attempting move of '+oldkey+ ' to '+newkey, oldcreds);
 
-    var client = ClientManager.prototype.get(session, oldkey, oldcreds);
+    var client = _ConnectionManager.prototype.get(session, oldkey, oldcreds);
 
     if (!client) {
       return false;
@@ -460,57 +403,47 @@ var ClientManagerWrapper = (function () {
   /**
    * Function: exists
    *
-   * returns a boolean indicating whether or not the given key has a client
+   * returns a boolean indicating whether or not the given ID exists
    *
    * Parameters:
    *
-   *   key - unique name to lookup client
+   *   id - unique name to lookup
    *
    * Returns:
    *
    *   boolean
    */
-  ClientManager.prototype.exists = function (platform, key) {
-    ensureIndex(platform);
-    var record = clients[platform].getRecord(key);
-    if (record) {
-      return true;
-    } else {
-      return false;
-    }
+  _ConnectionManager.prototype.exists = function (id) {
+    return clients.exists(id);
   };
 
 
   /**
    * Function: referenceCount
    *
-   * returns number of refernences for a given key
+   * returns number of refernences for a given ID
    *
    * Parameters:
    *
-   *   key - unique name to lookup client
+   *   id - unique id to get reference count on
    *
    * Returns:
    *
    *   number
    */
-  ClientManager.prototype.referenceCount = function (platform, key) {
-    ensureIndex(platform);
-    var record = clients[platform].getRecord(key);
-    if (!record) {
+  _ConnectionManager.prototype.referenceCount = function (id) {
+    var client = clients.getRecord(id);
+    if (! client) {
       return 0;
     }
-    //var count = Object.keys(clients[platform][key].references).length;
-    //console.debug(' [client manager] client '+key+' reference count: ' + count);
-    //console.debug(' [client manager] '+key+' references: ', clients[platform][key].references);
-    return record.references.getCount();
+    return client.references;
   };
 
 
   /**
-   * Function: getKeys
+   * Function: getIDs
    *
-   * returns all keys existing for the calling platform
+   * returns all IDs existing within the namespace
    *
    * Parameters:
    *
@@ -520,18 +453,13 @@ var ClientManagerWrapper = (function () {
    *
    *   array of strings
    */
-  ClientManager.prototype.getKeys = function (session) {
-    var platform  = session.platform,
-        sessionId = session.getSessionID();
-
-    ensureIndex(platform);
-
-    return clients[platform].getIdentifiers();
+  _ConnectionManager.prototype.getKeys = function () {
+    return clients.getIdentifiers();
   };
 
 
   /**
-   * Function: removeListeners
+   * Function: removeListeners TODO
    *
    * given a key and connection name (the name of the connection object attached
    * to the client object. for exaple 'xmpp' is the name of the xmpp session
@@ -546,10 +474,10 @@ var ClientManagerWrapper = (function () {
    *
    *   return description
    */
-  ClientManager.prototype.removeListeners = function (session, key) {
+  _ConnectionManager.prototype.removeListeners = function (session, key) {
     var platform  = session.platform,
         sessionId = session.getSessionID();
-    console.debug(' [client manager:removeListeners:' + platform + ':' + sessionId + '] called: ' + key);
+    console.debug(' [client manager:removeListeners:' + namespace + '] called: ' + key);
 
     ensureIndex(platform);
 
@@ -579,9 +507,9 @@ var ClientManagerWrapper = (function () {
                           ']:', client.listeners[type][listener]);
           } else {
             if (typeof client.conn.removeListener !== 'function') {
-              console.error(' [client manager:removeListeners:' + platform + ':' + sessionId + '] need a cliet[platform].removeListener function');
+              console.error(' [client manager:removeListeners:' + namespace + '] need a cliet[platform].removeListener function');
             } else {
-              console.debug(' [client manager:removeListeners:' + platform + ':' + sessionId + '] removing ' + type +
+              console.debug(' [client manager:removeListeners:' + namespace + '] removing ' + type +
                         ' event listeners for session [' + sessionId +
                         ']');
               client.conn.removeListener(
@@ -597,114 +525,25 @@ var ClientManagerWrapper = (function () {
     }
   };
 
-  return ClientManager;
+  return _ConnectionManager;
 })();
 
 
 
-var instances = {};
-var cm;
+var namespaces = new Arraykeys({
+  identifier: 'namespace'
+});
 
-
-/*
- * Wrapper: CMSession
- *
- * the CMSession object is essentially a wrapper for the ClientManager to
- * protect persistent information from other platforms. So a platform cannot
- * hijack another platforms client instance (an xmpp connection, for example)
- *
- * it curries all the functions of the ClientManager singleton with platform
- * and sessionId, making the interface very simple for the platform user.
- *
- * Parameters:
- *
- *   platform  - platform session object
- *
- * Returns:
- *
- *   CMSession object
- */
-function CMSession(session) {
-  var platform  = session.platform,
-      sessionId = session.getSessionID(),
-      o         = {
-        sid: sessionId
-      };
-
-  o.create = function (key, credentials, o, cb) {
-    return cm.create.call(cm, session, key, credentials, o, cb);
-  };
-
-  o.add = function (key, client) {
-    if ((!key) || (!client)) {
-      throw new Error(' [client manager:add:' + platform + ':' + sessionId +
-                      '] add requires two params: key, client (obj)');
-    }
-    return cm.add.call(cm, session, key, client);
-  };
-
-  o.remove = function (key) {
-    if (!key) {
-      throw new Error(' [client manager:remove:' + platform + ':' + sessionId +
-                      '] remove requires key');
-    }
-    return cm.remove.call(cm, session, key);
-  };
-
-  o.get = function (key, creds) {
-    return cm.get.call(cm, session, key, creds);
-  };
-
-  o.move = function (oldkey, oldcreds, newkey, newcreds) {
-    return cm.move.call(cm, session, oldkey, oldcreds, newkey, newcreds);
-  };
-
-  o.exists = function (key) {
-    return cm.exists.call(cm, platform, key);
-  };
-
-  o.referenceCount = function (key) {
-    return cm.referenceCount.call(cm, platform, key);
-  };
-
-  o.getKeys = function () {
-    return cm.getKeys.call(cm, session);
-  };
-
-  o.removeListeners = function (key, connection) {
-    return cm.removeListeners.call(cm, session, key, connection);
-  };
-  return o;
-}
-
-
-module.exports = function (session) {
-  if (typeof session !== 'object') {
-    console.error(' [client manager] constructor called without valid session object: ', session);
-    throw new Error('[client manager] constructor called without valid session object: ', session);
+module.exports = function (namespace) {
+  if (typeof session !== 'string') {
+    throw new Error('ConncetionManager constructor called without valid namespace param (string)');
   }
 
-  var platform  = session.platform,
-      sessionId = session.getSessionID();
-  // console.debug(' [client manager] constructor called with [platform:' +
-  //               platform + ', sessionId:' + sessionId + ']');
-
-
-  if (!cm) {
-    cm = new ClientManagerWrapper(platform);
+  var connectionManager = namespaces.get(namespace);
+  if (! connectionManager) {
+    _cm = new ConnectionManager(namespace);
+    connectionManager = namespaces.add(_cm);
   }
 
-  if (!instances[platform]) {
-    instances[platform] = new ArrayKeys({
-      identifier: 'sid'
-    });
-  }
-
-  var cmSession = instances[platform].getRecord(sessionId);
-  if (!cmSession) {
-    cmSession = new CMSession(session);
-    instances[platform].addRecord(cmSession);
-  }
-
-  return cmSession;
+  return connectionManager;
 };
