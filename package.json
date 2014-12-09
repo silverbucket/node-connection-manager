@@ -1,0 +1,39 @@
+{
+  "name": "connection-manager",
+  "version": "0.0.1",
+  "description": "Store, checkout & keepalive active connections from multiple locations in your code-base.",
+  "main": "./index.js",
+  "dependencies": {
+    "array-keys": "^1.2.0",
+    "event-emitter": "^0.3.1",
+    "object-assert": "0.0.1"
+  },
+  "devDependencies": {
+    "jaribu": "^0.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/silverbucket/node-connection-manager.git"
+  },
+  "scripts": {
+    "test": "node_modules/.bin/jaribu"
+  },
+  "keywords": [
+    "conncetion",
+    "client",
+    "manager",
+    "share",
+    "reconnect",
+    "connect",
+    "reference",
+    "keepalive",
+    "session"
+    "automate"
+  ],
+  "author": "Nick Jennings <nick@silverbucket.net>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/silverbucket/node-connection-manager/issues"
+  },
+  "homepage": "https://github.com/silverbucket/node-connection-manager"
+}
