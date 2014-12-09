@@ -270,19 +270,14 @@ var ConnectionManager = (function (namespace, scope) {
    *
    * Parameters:
    *
-   *   key - unique name to lookup client
+   *   id - unique name to lookup client
    *
    */
-  _ConnectionManager.prototype.remove = function (session, key) {
-    var platform  = session.platform,
-        sessionId = session.getSessionID();
-
-    ensureIndex(platform);
-
-    var record = clients[platform].getRecord(key);
-    if (record) {
+  _ConnectionManager.prototype.remove = function (id) {
+    var client = clients.getRecord(id);
+    if (client) {
       // first thing is we decrese the count by removing the session
-      record.references.removeRecord(sessionId);
+      client.references.removeRecord(scope.id);
     } else {
       return;
     }
@@ -541,8 +536,8 @@ module.exports = function (namespace) {
 
   var connectionManager = namespaces.get(namespace);
   if (! connectionManager) {
-    _cm = new ConnectionManager(namespace);
-    connectionManager = namespaces.add(_cm);
+    connectionManager = new ConnectionManager(namespace);
+    namespaces.addRecord(connectionManager);
   }
 
   return connectionManager;
