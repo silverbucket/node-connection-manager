@@ -5,10 +5,10 @@ Store and retreive active connections from multiple locations in your code-base,
 
 
 ```javascript
-var ConnectionShare = require('connection-share');
-var cs = new ConnectionShare('<unique_string_namespace>');
+var ConnectionManager = require('connection-manager');
+var cm = new ConnectionManager('<unique_string_namespace>');
 
-cs.create({
+cmcreate({
   id: 'irc://user@irc.freenode.net',  // unique identifier
   timeout: 10000,   // time to wait before cancelling the connect operation
   credentials: {    // used to connect & re-connect
