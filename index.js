@@ -24,15 +24,11 @@ module.exports = function (namespace, scope) {
     throw new Error('ConnectionManager called without valid namespace param (string)');
   }
 
-  var ns = namespaces.get(namespace);
+  var ns = namespaces.getRecord(namespace);
   if (! ns) {
     ns = new Namespace(namespace);
     namespaces.addRecord(ns);
   }
 
-  if (scope) {
-    return ns(scope);
-  } else{
-    return ns;
-  }
+  return ns.getManager(scope);
 };
