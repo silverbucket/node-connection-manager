@@ -4,7 +4,7 @@
   "description": "Store, checkout & keepalive active connections from multiple locations in your code-base.",
   "main": "./index.js",
   "dependencies": {
-    "array-keys": "^1.2.0",
+    "array-keys": "^1.2.5",
     "object-assert": "0.0.1"
   },
   "devDependencies": {

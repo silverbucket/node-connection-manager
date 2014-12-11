@@ -35,43 +35,121 @@ define(['require'], function (require) {
         foo: 'bar cm4'
       });
 
-      test.assertType(env.cm3.create, 'function');
+      test.assertType(env.cm3, 'object');
     },
 
     tests: [
       {
         desc: 'get something that doesnt exist',
         run: function (env, test) {
-          test.assert(env.cm1.get('test-client', {}), undefined);
-        }
-      },
-      {
-        desc: 'add a client with incorrect params',
-        willFail: true,
-        run: function (env, test) {
-          try {
-            env.cm1.add('test1', {
-              end: function () {}
-            });
-            test.result(true);
-          } catch (e) {
-            test.result(false, e);
-          }
+          test.assert(env.cm1.get('test-client'), undefined);
         }
       },
 
       {
-        desc: 'add a client with correct params (no credentials)',
+        desc: '#__getScope',
         run: function (env, test) {
-          try {
-            env.cm1.add('test1', {
-              disconnect: function () {},
-              credentials: {}
-            });
-            test.result(true);
-          } catch (e) {
-            test.result(false, e);
-          }
+          test.assertTypeAnd(env.cm2.__getScope, 'function');
+          var scope = env.cm2.__getScope();
+          var exp = {
+            id: 'cm2',
+            foo: 'bar cm2'
+          };
+          test.assert(scope, exp);
+        }
+      },
+
+      {
+        desc: '# referenceCount 0',
+        run: function (env, test) {
+            test.assert(env.cm2.referenceCount('test-client'), 0);
+        }
+      },
+
+      {
+        desc: '# create a client [cm1]',
+        run: function (env, test) {
+          var checklist = {
+            connect: false,
+            disconnect: false,
+            listenersConnect: false,
+            listenersDisconnect: false
+          };
+
+          env.credentials = {
+            'test-client': {
+              hello: 'world'
+            }
+          };
+
+          env.cm1.create({
+            id: 'test-client',
+            credentials: env.credentials['test-client'],
+            listeners: {
+              connect: function (obj) {
+                this.scope.connected = true;
+                checklist.listenersConnect = true;
+                test.assertAnd(this.connection.myConnectionObject, true);
+              },
+              disconnect: function (obj) {
+                this.scope.disconnected = true;
+                checklist.listenersDisconnect = true;
+                test.assertAnd(this.connection.myConnectionObject, true);
+              }
+            },
+            connect: function (cb) {
+              console.log('this: ', this);
+              checklist.connect = true;
+              test.assertAnd(this.scope.foo, 'bar cm1');
+
+              var connectObj = {
+                myConnectionObject: true
+              };
+              cb(null, connectObj);
+            },
+            addListener: function () {},
+            removeListener: function () {},
+            disconnect: function (cb) { cb(null); }
+          }, function (err, client) {
+            if (err) { test.result(false, err); }
+            else { test.assertType(client.connection, 'object'); }
+          });
+        }
+      },
+
+      {
+        desc: '# referenceCount 1',
+        run: function (env, test) {
+            test.assert(env.cm2.referenceCount('test-client'), 1);
+        }
+      },
+
+      {
+        desc: '# __getScope [cm1]',
+        run: function (env, test) {
+          var scope = env.cm1.__getScope();
+            test.assert(scope.foo, 'bar cm1');
+        }
+      },
+
+      {
+        desc: '# referenceCount 1 [cm1]',
+        run: function (env, test) {
+            test.assert(env.cm1.referenceCount('test-client'), 1);
+        }
+      },
+
+      {
+        desc: '# get [cm2]',
+        run: function (env, test) {
+            test.assertType(env.cm2.get('test-client', env.credentials['test-client']), 'object');
+        }
+      },
+
+      {
+        desc: '# referenceCount 2 [cm3]',
+        run: function (env, test) {
+            test.assert(env.cm3.referenceCount('test-client'), 3);
         }
       },
 
