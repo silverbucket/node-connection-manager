@@ -145,6 +145,27 @@ define(['require'], function (require) {
       {
         desc: '# referenceCount 1 [test-client]',
         run: function (env, test) {
+          test.assert(env.cm4.referenceCount('test-client'), 0);
+        }
+      },
+
+      {
+        desc: '# get [test-client]',
+        run: function (env, test) {
+          test.assertType(env.cm4.get('test-client', env.credentials['test-client']), 'undefined');
+        }
+      },
+
+      {
+        desc: '# referenceCount 1 [test-client]',
+        run: function (env, test) {
+          test.assert(env.cm4.referenceCount('test-client'), 0);
+        }
+      },
+
+      {
+        desc: '# referenceCount 1 [test-client]',
+        run: function (env, test) {
           test.assert(env.cm1.referenceCount('test-client'), 1);
         }
       },
@@ -296,11 +317,9 @@ define(['require'], function (require) {
       {
         desc: '# get cm1 [test-client2]',
         run: function (env, test) {
-          console.log(env.testClient2.references.idx.sort());
           test.assert(env.testClient2.references.idx.sort(), ['cm2'].sort());
         }
       },
-
 
       {
         desc: '# referenceCount 1 [test-client2]',
