@@ -62,12 +62,12 @@ define(['require'], function (require) {
       {
         desc: '# referenceCount 0',
         run: function (env, test) {
-            test.assert(env.cm2.referenceCount('test-client'), 0);
+          test.assert(env.cm2.referenceCount('test-client'), 0);
         }
       },
 
       {
-        desc: '# create a client [cm1]',
+        desc: '# create a client [test-client]',
         run: function (env, test) {
           var checklist = {
             connect: false,
@@ -118,14 +118,14 @@ define(['require'], function (require) {
       },
 
       {
-        desc: '# referenceCount 1',
+        desc: '# referenceCount 1 [test-client]',
         run: function (env, test) {
             test.assert(env.cm2.referenceCount('test-client'), 1);
         }
       },
 
       {
-        desc: '# __getScope [cm1]',
+        desc: '# __getScope [test-client]',
         run: function (env, test) {
           var scope = env.cm1.__getScope();
             test.assert(scope.foo, 'bar cm1');
@@ -133,146 +133,193 @@ define(['require'], function (require) {
       },
 
       {
-        desc: '# referenceCount 1 [cm1]',
+        desc: '# referenceCount 1 [test-client]',
         run: function (env, test) {
-            test.assert(env.cm1.referenceCount('test-client'), 1);
+          test.assert(env.cm1.referenceCount('test-client'), 1);
         }
       },
 
       {
-        desc: '# get [cm2]',
+        desc: '# get [test-client]',
         run: function (env, test) {
-            test.assertType(env.cm2.get('test-client', env.credentials['test-client']), 'object');
+          test.assertType(env.cm2.get('test-client', env.credentials['test-client']), 'object');
         }
       },
 
       {
-        desc: '# referenceCount 2 [cm3]',
+        desc: '# referenceCount 2 [test-client]',
         run: function (env, test) {
-            test.assert(env.cm3.referenceCount('test-client'), 3);
+          test.assert(env.cm3.referenceCount('test-client'), 2);
         }
       },
 
       {
-        desc: 'fetch client without creds',
+        desc: '#get without creds [test-client]',
         run: function (env, test) {
-          var client;
-          try {
-            client = env.cm1.get('test1', {});
-          } catch (e) {
-            test.result(false, e);
-          }
-          test.assertType(client, 'object');
+          var client = env.cm1.get('test-client', {});
+          test.assert(client, false);
         }
       },
 
       {
-        desc: 'add a client with credentials',
+        desc: '# get non-existant client name',
         run: function (env, test) {
-          try {
-            env.cm1.add('test-client-2', {
-              disconnect: function () {},
-              credentials: {
-                pepper: 'salt',
-                ketchup: 'mustard',
-                yo: [ 'one', 'two', 'three' ],
-                deep: {
-                  objects: 'that',
-                  are: 'deep',
-                  and: {
-                    deeper: true
-                  }
-                }
+          var client = env.cm1.get('badclientname', {});
+          test.assert(client, undefined);
+        }
+      },
+
+      {
+        desc: '# get [test-client]',
+        run: function (env, test) {
+          test.assertType(env.cm3.get('test-client', env.credentials['test-client']), 'object');
+        }
+      },
+
+      {
+        desc: '# referenceCount 2 [test-client]',
+        run: function (env, test) {
+          test.assert(env.cm1.referenceCount('test-client'), 3);
+        }
+      },
+
+      {
+        desc: '# create a client [test-client2]',
+        run: function (env, test) {
+          var checklist = {
+            connect: false,
+            disconnect: false,
+            listenersConnect: false,
+            listenersDisconnect: false
+          };
+
+          env.credentials = {
+            'test-client2': {
+              foo: 'bar'
+            }
+          };
+
+          env.cm2.create({
+            id: 'test-client2',
+            credentials: env.credentials['test-client2'],
+            listeners: {
+              connect: function (obj) {
+                this.scope.connected = true;
+                checklist.listenersConnect = true;
+                test.assertAnd(this.connection.myConnectionObject, true);
+              },
+              disconnect: function (obj) {
+                this.scope.disconnected = true;
+                checklist.listenersDisconnect = true;
+                test.assertAnd(this.connection.myConnectionObject, true);
               }
-            });
-            test.result(true);
-          } catch (e) {
-            test.result(false, e);
-          }
+            },
+            connect: function (cb) {
+              console.log('this: ', this);
+              checklist.connect = true;
+              test.assertAnd(this.scope.foo, 'bar cm2');
+
+              var connectObj = {
+                myConnectionObject: true
+              };
+              cb(null, connectObj);
+            },
+            addListener: function () {},
+            removeListener: function () {},
+            disconnect: function (cb) { cb(null); }
+          }, function (err, client) {
+            if (err) { test.result(false, err); }
+            else {
+              test.assertAnd(client.references.idx[0], 'cm2');
+              test.assertType(client.connection, 'object');
+            }
+          });
         }
       },
 
       {
-        desc: 'fetch client with creds. cm1',
+        desc: '# referenceCount 1 [test-client2]',
         run: function (env, test) {
-          try {
-            var client = env.cm1.get('test-client-2', {
-              pepper: 'salt',
-              ketchup: 'mustard',
-              yo: [ 'one', 'two', 'three' ],
-              deep: {
-                objects: 'that',
-                are: 'deep',
-                and: {
-                  deeper: true
-                }
-              }
-            });
-            test.assertType(client, 'object');
-          } catch (e) {
-            test.result(false, e);
-          }
+          test.assert(env.cm1.referenceCount('test-client2'), 1);
         }
       },
 
       {
-        desc: 'fetch client with creds. cm2',
+        desc: '# get cm1 [test-client2]',
         run: function (env, test) {
-          try {
-            var client = env.cm2.get('test-client-2', {
-              pepper: 'salt',
-              ketchup: 'mustard',
-              yo: [ 'one', 'two', 'three' ],
-              deep: {
-                objects: 'that',
-                are: 'deep',
-                and: {
-                  deeper: true
-                }
-              }
-            });
-            test.assertType(client, 'object');
-          } catch (e) {
-            test.result(false, e);
-          }
+          test.assertType(env.cm1.get('test-client2', env.credentials['test-client2']), 'object');
         }
       },
 
       {
-        desc: 'get count on test-client-2',
+        desc: '# referenceCount 2 [test-client2]',
         run: function (env, test) {
-          try {
-            var count = env.cm1.referenceCount('test-client-2');
-            console.log('COUNT: '+count);
-            test.assert(count, 2);
-          } catch (e) {
-            test.result(false, e);
-          }
+          test.assert(env.cm3.referenceCount('test-client2'), 2);
         }
       },
 
       {
-        desc: 'remove one listener',
+        desc: '# get cm1 [test-client2]',
         run: function (env, test) {
-          try {
-            env.cm1.remove('test-client-2');
-            test.result(true);
-          } catch (e) {
-            test.result(false, e);
-          }
+          env.testClient2 = env.cm1.get('test-client2', env.credentials['test-client2']);
+          test.assertTypeAnd(env.testClient2, 'object');
+          test.assert(env.testClient2.references.idx.sort(), ['cm1', 'cm2'].sort());
         }
       },
 
       {
-        desc: 'get count on test-client-2 again',
+        desc: '# referenceCount 2 [test-client2]',
         run: function (env, test) {
-          try {
-            var count = env.cm1.referenceCount('test-client-2');
-            console.log('COUNT: '+count);
-            test.assert(count, 1);
-          } catch (e) {
-            test.result(false, e);
-          }
+          test.assert(env.cm3.referenceCount('test-client2'), 2);
+        }
+      },
+
+      {
+        desc: '# remove one listener [test-client2]',
+        run: function (env, test) {
+          env.cm1.remove('test-client2');
+          test.result(true);
+        }
+      },
+
+      {
+        desc: '# get cm1 [test-client2]',
+        run: function (env, test) {
+          console.log(env.testClient2.references.idx.sort());
+          test.assert(env.testClient2.references.idx.sort(), ['cm2'].sort());
+        }
+      },
+
+
+      {
+        desc: '# referenceCount 1 [test-client2]',
+        run: function (env, test) {
+          test.assert(env.cm1.referenceCount('test-client2'), 1);
+        }
+      },
+
+      {
+        desc: '# remove another listener [test-client2]',
+        run: function (env, test) {
+          env.cm2.remove('test-client2');
+          test.result(true);
+        }
+      },
+
+      {
+        desc: '# referenceCount 2 [test-client2]',
+        run: function (env, test) {
+            test.assert(env.cm3.referenceCount('test-client2'), 0);
+        }
+      },
+
+      {
+        desc: '# wait 20secs for clear',
+        timeout: 30000,
+        run: function (env, test) {
+          setTimeout(function () {
+            test.assert(env.cm1.get('test-client2'), undefined);
+          }, 21000);
         }
       }
 
