@@ -15,6 +15,15 @@ define(['require'], function (require) {
       env.namespace1 = 'namespace1';
       env.namespace2 = 'namespace2';
 
+      env.callbacks = {
+        'test-client': {
+          disconnect: 0
+        },
+        'test-client2': {
+          disconnect: 1
+        }
+      };
+
       env.cm1 = connectionManager(env.namespace1, {
         id: 'cm1',
         foo: 'bar cm1'
@@ -94,6 +103,7 @@ define(['require'], function (require) {
               disconnect: function (obj) {
                 this.scope.disconnected = true;
                 checklist.listenersDisconnect = true;
+                env.callbacks['test-client'].disconnect += 1;
                 test.assertAnd(this.connection.myConnectionObject, true);
               }
             },
@@ -211,6 +221,7 @@ define(['require'], function (require) {
               disconnect: function (obj) {
                 this.scope.disconnected = true;
                 checklist.listenersDisconnect = true;
+                env.callbacks['test-client2'].disconnect += 1;
                 test.assertAnd(this.connection.myConnectionObject, true);
               }
             },
@@ -318,7 +329,8 @@ define(['require'], function (require) {
         timeout: 30000,
         run: function (env, test) {
           setTimeout(function () {
-            test.assert(env.cm1.get('test-client2'), undefined);
+            test.assertAnd(env.cm1.get('test-client2', env.credentials['test-client2']), undefined);
+            test.assert(env.callbacks['test-client2'].disconnect, 1);
           }, 21000);
         }
       }
