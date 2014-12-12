@@ -4,7 +4,7 @@
 [![Code Climate](http://img.shields.io/codeclimate/github/silverbucket/node-connection-manager.svg?style=flat)](https://codeclimate.com/github/silverbucket/node-connection-manager)
 [![license](https://img.shields.io/npm/l/connection-manager.svg?style=flat)](https://npmjs.org/package/connection-manager)
 [![downloads](http://img.shields.io/npm/dm/connection-manager.svg?style=flat)](https://npmjs.org/package/connection-manager)
-[![release](http://img.shields.io/github/release/silverbucket/array-keys.svg?style=flat)](https://github.com/silverbucket/node-connection-manager/releases)
+[![release](http://img.shields.io/github/release/silverbucket/node-connection-manager.svg?style=flat)](https://github.com/silverbucket/node-connection-manager/releases)
 
 
 Store and retreive active connections from multiple locations in your code-base, keep connection alive as long as there are references to it. One all references are lost, the connection is terminated using the provided callback.
