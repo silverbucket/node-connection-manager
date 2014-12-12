@@ -1,7 +1,15 @@
-node-connection-manager
-=======================
+# node-connection-manager
 
-Store and retreive active connections from multiple locations in your code-base, keep connection alive as long as there are references to it. Able to reconnect and manage listeners.
+[![Build Status](http://img.shields.io/travis/silverbucket/node-connection-manager.svg?style=flat)](http://travis-ci.org/silverbucket/node-connection-manager)
+[![Code Climate](http://img.shields.io/codeclimate/github/silverbucket/node-connection-manager.svg?style=flat)](https://codeclimate.com/github/silverbucket/node-connection-manager)
+[![license](https://img.shields.io/npm/l/connection-manager.svg?style=flat)](https://npmjs.org/package/connection-manager)
+[![downloads](http://img.shields.io/npm/dm/connection-manager.svg?style=flat)](https://npmjs.org/package/connection-manager)
+[![release](http://img.shields.io/github/release/silverbucket/array-keys.svg?style=flat)](https://github.com/silverbucket/node-connection-manager/releases)
+
+
+Store and retreive active connections from multiple locations in your code-base, keep connection alive as long as there are references to it. One all references are lost, the connection is terminated using the provided callback.
+
+This module was designed to be used in a situation where a single connection might need to be shared amongst several places in the code, and should be automatically destroyed once there are no more references.
 
 
 ```javascript
