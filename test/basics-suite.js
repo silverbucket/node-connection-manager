@@ -82,7 +82,8 @@ define(['require'], function (require) {
             connect: false,
             disconnect: false,
             listenersConnect: false,
-            listenersDisconnect: false
+            listenersDisconnect: false,
+            listenersStar: false
           };
 
           env.credentials = {
@@ -95,6 +96,11 @@ define(['require'], function (require) {
             id: 'test-client',
             credentials: env.credentials['test-client'],
             listeners: {
+              '*': function (obj) {
+                this.scope.star = true;
+                checklist.listenersStar = true;
+                test.assertAnd(this.connection.myConnectionObject, true);
+              },
               connect: function (obj) {
                 this.scope.connected = true;
                 checklist.listenersConnect = true;
@@ -108,21 +114,42 @@ define(['require'], function (require) {
               }
             },
             connect: function (cb) {
-              console.log('this: ', this);
               checklist.connect = true;
               test.assertAnd(this.scope.foo, 'bar cm1');
 
+              var events = require('events');
+
               var connectObj = {
-                myConnectionObject: true
+                myConnectionObject: true,
+                emitter: new events.EventEmitter()
               };
               cb(null, connectObj);
             },
-            addListener: function () {},
-            removeListener: function () {},
+            addListener: function (name, func) {
+              this.connection.emitter.on(name, func);
+            },
+            removeListener: function (name, funcName) {
+              this.connection.emitter.on(name, func);
+            },
             disconnect: function (cb) { cb(null); }
           }, function (err, client) {
-            if (err) { test.result(false, err); }
-            else { test.assertType(client.connection, 'object'); }
+            if (err) {
+              test.result(false, err);
+            } else {
+              test.assertTypeAnd(client.connection, 'object');
+
+              client.connection.emitter.emit('connect', {hello:'world'});
+              client.connection.emitter.emit('disconnect', {hello:'world'});
+              client.connection.emitter.emit('*', {hello:'world'});
+
+              test.assert(checklist, {
+                connect: true,
+                disconnect: false,
+                listenersConnect: true,
+                listenersDisconnect: true,
+                listenersStar: true
+              });
+            }
           });
         }
       },
@@ -152,7 +179,8 @@ define(['require'], function (require) {
       {
         desc: '# get [test-client]',
         run: function (env, test) {
-          test.assertType(env.cm4.get('test-client', env.credentials['test-client']), 'undefined');
+          var client = env.cm4.get('test-client', env.credentials['test-client']);
+          test.assertType(client, 'undefined');
         }
       },
 
@@ -173,7 +201,9 @@ define(['require'], function (require) {
       {
         desc: '# get [test-client]',
         run: function (env, test) {
-          test.assertType(env.cm2.get('test-client', env.credentials['test-client']), 'object');
+          var client = env.cm2.get('test-client', env.credentials['test-client']);
+          console.log('client: ', client);
+          test.assertType(client, 'object');
         }
       },
 
