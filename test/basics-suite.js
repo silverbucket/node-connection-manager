@@ -81,8 +81,8 @@ define(['require'], function (require) {
           var checklist = {
             connect: false,
             disconnect: false,
-            listenersConnect: false,
-            listenersDisconnect: false,
+            listenersConnected: false,
+            listenersDisconnected: false,
             listenersStar: false
           };
 
@@ -101,14 +101,14 @@ define(['require'], function (require) {
                 checklist.listenersStar = true;
                 test.assertAnd(this.connection.myConnectionObject, true);
               },
-              connect: function (obj) {
+              connected: function (obj) {
                 this.scope.connected = true;
-                checklist.listenersConnect = true;
+                checklist.listenersConnected = true;
                 test.assertAnd(this.connection.myConnectionObject, true);
               },
-              disconnect: function (obj) {
+              disconnected: function (obj) {
                 this.scope.disconnected = true;
-                checklist.listenersDisconnect = true;
+                checklist.listenersDisconnected = true;
                 env.callbacks['test-client'].disconnect += 1;
                 test.assertAnd(this.connection.myConnectionObject, true);
               }
@@ -138,15 +138,15 @@ define(['require'], function (require) {
             } else {
               test.assertTypeAnd(client.connection, 'object');
 
-              client.connection.emitter.emit('connect', {hello:'world'});
-              client.connection.emitter.emit('disconnect', {hello:'world'});
+              client.connection.emitter.emit('connected', {hello:'world'});
+              client.connection.emitter.emit('disconnected', {hello:'world'});
               client.connection.emitter.emit('*', {hello:'world'});
 
               test.assert(checklist, {
                 connect: true,
                 disconnect: false,
-                listenersConnect: true,
-                listenersDisconnect: true,
+                listenersConnected: true,
+                listenersDisconnected: true,
                 listenersStar: true
               });
             }
@@ -249,9 +249,9 @@ define(['require'], function (require) {
         run: function (env, test) {
           var checklist = {
             connect: false,
-            disconnect: false,
-            listenersConnect: false,
-            listenersDisconnect: false
+            disconnecte: false,
+            listenersConnected: false,
+            listenersDisconnected: false
           };
 
           env.credentials = {
@@ -264,14 +264,14 @@ define(['require'], function (require) {
             id: 'test-client2',
             credentials: env.credentials['test-client2'],
             listeners: {
-              connect: function (obj) {
+              connected: function (obj) {
                 this.scope.connected = true;
-                checklist.listenersConnect = true;
+                checklist.listenersConnected = true;
                 test.assertAnd(this.connection.myConnectionObject, true);
               },
-              disconnect: function (obj) {
+              disconnected: function (obj) {
                 this.scope.disconnected = true;
-                checklist.listenersDisconnect = true;
+                checklist.listenersDisconnected = true;
                 env.callbacks['test-client2'].disconnect += 1;
                 test.assertAnd(this.connection.myConnectionObject, true);
               }
