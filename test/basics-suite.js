@@ -215,7 +215,7 @@ define(['require'], function (require) {
       },
 
       {
-        desc: '#get without creds [test-client]',
+        desc: '# get without creds [test-client]',
         run: function (env, test) {
           var client = env.cm1.get('test-client', {});
           test.assert(client, false);
@@ -241,6 +241,30 @@ define(['require'], function (require) {
         desc: '# referenceCount 2 [test-client]',
         run: function (env, test) {
           test.assert(env.cm1.referenceCount('test-client'), 3);
+        }
+      },
+
+      {
+        desc: '# move [test-client -> test-renamed]',
+        run: function (env, test) {
+          test.assert(env.cm1.move(
+            'test-client', env.credentials['test-client'],
+            'test-renamed', env.credentials['test-client']
+          ), true);
+        }
+      },
+
+      {
+        desc: '# referenceCount 2 [test-renamed]',
+        run: function (env, test) {
+          test.assert(env.cm1.referenceCount('test-renamed'), 3);
+        }
+      },
+
+      {
+        desc: '# get [test-client] should fail',
+        run: function (env, test) {
+          test.assert(env.cm1.get('test-client', env.credentials['test-client']), undefined);
         }
       },
 
