@@ -1,5 +1,5 @@
 /**
- * copyright 2012-2015 Nick Jennings (https://github.com/silverbucket)
+ * copyright 2012-2017 Nick Jennings (https://github.com/silverbucket)
  *
  * node-connection-share is licensed under the MIT license.
  * See the LICENSE file for details.
