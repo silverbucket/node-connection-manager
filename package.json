@@ -4,12 +4,12 @@
   "description": "Store, checkout & keepalive active connections from multiple locations in your code-base.",
   "main": "./index.js",
   "dependencies": {
-    "array-keys": "^2.1.3",
-    "debug": "^2.1.1",
+    "array-keys": "^2.3.1",
+    "debug": "^2.6.0",
     "object-assert": "^0.0.1"
   },
   "devDependencies": {
-    "jaribu": "^0.2.2"
+    "jaribu": "^2.2.1"
   },
   "repository": {
     "type": "git",
