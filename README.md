@@ -13,6 +13,7 @@ This module was designed to be used in a situation where a single connection mig
 
 
 ```javascript
+var xmpp_client = require('fake-xmpp-client');
 var cm = require('connection-manager')('MY_APPS_CONNECTIONS', {
   id: 'unique_to_this_object_instance',
   foo: 'bar', // always added to the scope of the callbacks defined below
@@ -27,16 +28,16 @@ cm.create({
     host: 'irc.freenode.net'
   },
   connect: function (cb) {
-    conn.on('connect', function (connection) {
+    xmpp_client.on('connect', function (connection) {
       cb(null, connection);
     });
 
-    conn.on('error', function (err) {
+    xmpp_client.on('error', function (err) {
       cb(err);
     });
 
     // attempting to connect...
-    conn.open(this.credentials);
+    xmpp_client.open(this.credentials);
   },
   listeners: {
     join: function (object) {
@@ -63,8 +64,7 @@ cm.create({
     this.connection.close();
     cb();
   }
-},
-function (err, client) {
+}, function (err, client) {
   if (err) {
     // error during connection object creation
   }
@@ -77,18 +77,18 @@ function (err, client) {
 
   // the connection manager will keep a reference count for anyone who's
   // fetched the object
-  
   console.log('references: ' + client.references);  // 1
 });
 ```
 
 
 Elsewhere in the code:
+
 ```javascript
 var connectionManager = require('connection-manager');
 
 var cm = connectionManager('MY_APPS_CONNECTIONS', {
-  id: 'this_is_unique_to_this_object_instance',
+  id: 'this_is_unique_to_this_object_instance_different_than_the_other',
   foo: { bar: 'baz' }, // always added to the scope of the callbacks for this instance 
   hello: 'goodbye'
 });;
