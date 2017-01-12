@@ -202,7 +202,7 @@ define(['require'], function (require) {
         desc: '# get [test-client]',
         run: function (env, test) {
           var client = env.cm2.get('test-client', env.credentials['test-client']);
-          console.log('client: ', client);
+          // console.log('client: ', client);
           test.assertType(client, 'object');
         }
       },
@@ -301,7 +301,6 @@ define(['require'], function (require) {
               }
             },
             connect: function (cb) {
-              console.log('this: ', this);
               checklist.connect = true;
               test.assertAnd(this.scope.foo, 'bar cm2');
 
@@ -316,7 +315,7 @@ define(['require'], function (require) {
           }, function (err, client) {
             if (err) { test.result(false, err); }
             else {
-              test.assertAnd(client.references.idx[0], 'cm2');
+              test.assertAnd(client.references._idx[0], 'cm2');
               test.assertType(client.connection, 'object');
             }
           });
@@ -349,7 +348,7 @@ define(['require'], function (require) {
         run: function (env, test) {
           env.testClient2 = env.cm1.get('test-client2', env.credentials['test-client2']);
           test.assertTypeAnd(env.testClient2, 'object');
-          test.assert(env.testClient2.references.idx.sort(), ['cm1', 'cm2'].sort());
+          test.assert(env.testClient2.references._idx.sort(), ['cm1', 'cm2'].sort());
         }
       },
 
@@ -371,7 +370,7 @@ define(['require'], function (require) {
       {
         desc: '# get cm1 [test-client2]',
         run: function (env, test) {
-          test.assert(env.testClient2.references.idx.sort(), ['cm2'].sort());
+          test.assert(env.testClient2.references._idx.sort(), ['cm2'].sort());
         }
       },
 
