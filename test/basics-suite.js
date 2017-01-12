@@ -405,6 +405,53 @@ define(['require'], function (require) {
             test.assert(env.callbacks['test-client2'].disconnect, 1);
           }, 21000);
         }
+      },
+
+      {
+        desc: '# try getOrCreate on a known non-existant record',
+        run: function (env, test) {
+          var checklist = {
+            connect: false,
+            disconnecte: false,
+            listenersConnected: false,
+            listenersDisconnected: false
+          };
+          test.assertType(env.cm1.getOrCreate('test-client2', {
+              id: 'test-client2',
+              credentials: env.credentials['test-client2'],
+              listeners: {
+                connected: function (obj) {
+                  this.scope.connected = true;
+                  checklist.listenersConnected = true;
+                  test.assertAnd(this.connection.myConnectionObject, true);
+                },
+                disconnected: function (obj) {
+                  this.scope.disconnected = true;
+                  checklist.listenersDisconnected = true;
+                  env.callbacks['test-client2'].disconnect += 1;
+                  test.assertAnd(this.connection.myConnectionObject, true);
+                }
+              },
+              connect: function (cb) {
+                checklist.connect = true;
+                test.assertAnd(this.scope.foo, 'bar cm1');
+
+                var connectObj = {
+                  myConnectionObject: true
+                };
+                cb(null, connectObj);
+              },
+              addListener: function () {},
+              removeListener: function () {},
+              disconnect: function (cb) { cb(null); }
+            }, function (err, client) {
+              if (err) { test.result(false, err); }
+              else {
+                test.assertAnd(client.references._idx[0], 'cm1');
+                test.assertType(client.connection, 'object');
+              }
+            }), 'object');
+        }
       }
 
     ]
