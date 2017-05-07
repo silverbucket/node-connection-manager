@@ -1,5 +1,7 @@
 # node-connection-manager
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/silverbucket/node-connection-manager.svg)](https://greenkeeper.io/)
+
 [![Build Status](http://img.shields.io/travis/silverbucket/node-connection-manager.svg?style=flat)](http://travis-ci.org/silverbucket/node-connection-manager)
 [![Code Climate](http://img.shields.io/codeclimate/github/silverbucket/node-connection-manager.svg?style=flat)](https://codeclimate.com/github/silverbucket/node-connection-manager)
 [![license](https://img.shields.io/npm/l/connection-manager.svg?style=flat)](https://npmjs.org/package/connection-manager)
