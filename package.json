@@ -1,6 +1,6 @@
 {
   "name": "connection-manager",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Store, checkout & keepalive active connections from multiple locations in your code-base.",
   "main": "./index.js",
   "dependencies": {
