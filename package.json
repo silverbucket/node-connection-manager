@@ -5,7 +5,7 @@
   "main": "./index.js",
   "dependencies": {
     "array-keys": "^2.3.1",
-    "debug": "^2.6.0",
+    "debug": "^4.0.0",
     "object-assert": "^1.0.0"
   },
   "devDependencies": {
